@@ -2461,3 +2461,41 @@ it('throws a readable exception message when the constructor fails', function (
     yield 'no params' => [[], 'Could not create `Spatie\LaravelData\Tests\Fakes\MultiData`: the constructor requires 2 parameters, 0 given. Parameters missing: first, second.'],
     yield 'one param' => [['first' => 'First'], 'Could not create `Spatie\LaravelData\Tests\Fakes\MultiData`: the constructor requires 2 parameters, 1 given. Parameters given: first. Parameters missing: second.'],
 ]);
+
+it('returns true for empty data models when calling isEmpty, and false for populated ones', function () {
+    class DataWithDefaultsForAllProperties extends Data {
+        public function __construct(
+            public ?string $search = null,
+            public ?string $status = null,
+            public ?bool $hidden = null,
+        ) {
+        }
+    }
+
+    class DataWithoutDefaultsForAllProperties extends Data {
+        public function __construct(
+            public ?string $search
+        ) {
+        }
+    }
+
+    expect(DataWithDefaultsForAllProperties::from([])->isEmpty())
+        ->toBeTrue()
+        ->and(DataWithDefaultsForAllProperties::from([
+            'search' => 'something',
+        ])->isEmpty())->toBeFalse()
+        ->and(DataWithDefaultsForAllProperties::from([
+            'hidden' => false,
+        ])->isEmpty())->toBeFalse()
+        ->and(DataWithDefaultsForAllProperties::from([
+            'status' => 'published',
+        ])->isEmpty())->toBeFalse()
+        ->and(DataWithDefaultsForAllProperties::from([
+            'search' => 'something',
+            'status' => 'published',
+        ])->isEmpty())->toBeFalse()
+        ->and(DataWithoutDefaultsForAllProperties::from([
+            'search' => null,
+        ])->isEmpty())->toBeFalse();
+
+});
