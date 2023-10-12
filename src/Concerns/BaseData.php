@@ -6,7 +6,10 @@ use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Pagination\AbstractCursorPaginator;
 use Illuminate\Pagination\AbstractPaginator;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Enumerable;
+use ReflectionObject;
+use ReflectionParameter;
 use Spatie\LaravelData\CursorPaginatedDataCollection;
 use Spatie\LaravelData\DataCollection;
 use Spatie\LaravelData\DataPipeline;
@@ -112,6 +115,41 @@ trait BaseData
         $class = static::class;
 
         return app(DataConfig::class)->morphMap->getDataClassAlias($class) ?? $class;
+    }
+
+    public function isEmpty(): bool
+    {
+        $reflection = new ReflectionObject($this);
+
+        foreach ($reflection->getProperties() as $property) {
+
+            $hasDefaultValue = $property->hasDefaultValue();
+            $defaultValue = $property->getDefaultValue();
+
+            if (
+                $property->isPromoted() &&
+                $parameter = Arr::first(
+                    $reflection->getConstructor()->getParameters(),
+                    fn (ReflectionParameter $value) => $value->getName() === $property->getName()
+                )
+            ) {
+                try {
+                    $defaultValue = $parameter->getDefaultValue();
+                    $hasDefaultValue = true;
+                } catch (\ReflectionException $e) {
+                    $hasDefaultValue = false;
+                }
+            }
+
+            if (! $hasDefaultValue) {
+                return false;
+            }
+            if ($defaultValue !== $property->getValue($this)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function __sleep(): array
